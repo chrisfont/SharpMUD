@@ -4,6 +4,7 @@ using System.Collections.Generic;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using System.Collections;
 
 namespace SharpMUD
 {
@@ -22,8 +23,10 @@ namespace SharpMUD
 			CmdTable = new Dictionary<String, CmdAccess>()
 			{
 				{"quit",     new CmdAccess{func = new Action<WorldState,Client,Message>(CmdQuit),     reqAccess = Profile.ALevels.Mortal}},
+				{"who",      new CmdAccess{func = new Action<WorldState,Client,Message>(CmdWho),      reqAccess = Profile.ALevels.Mortal}},
 				{"say",      new CmdAccess{func = new Action<WorldState,Client,Message>(CmdSend),     reqAccess = Profile.ALevels.Mortal}},
-				{"shutdown", new CmdAccess{func = new Action<WorldState,Client,Message>(CmdShutdown), reqAccess = Profile.ALevels.Coder}}
+				{"ooc",      new CmdAccess{func = new Action<WorldState,Client,Message>(CmdSendOOC),  reqAccess = Profile.ALevels.Mortal}},
+				{"shutdown", new CmdAccess{func = new Action<WorldState,Client,Message>(CmdShutdown), reqAccess = Profile.ALevels.Admin}}
 			};
 		}
 
@@ -57,12 +60,25 @@ namespace SharpMUD
 					Console.WriteLine("Found command: {0}", input.cmd);
 					CmdTable[input.cmd].func(world, client, input);
 				}
-				Console.WriteLine("{0} command with reqLevel {1} tried to be accessed by {2} level.", input.cmd, CmdTable[input.cmd].reqAccess, client.UserProfile.AccessLevel);
 			}
 			catch(KeyNotFoundException)
 			{
 				return;
 			}
+		}
+
+		public void CmdWho(WorldState world, Client client, Message input)
+		{
+			SortedList wholist = new SortedList();
+
+			foreach(Client lclient in world.clientList)
+				if(lclient.State == Client.CStates.playing)
+					wholist.Add(lclient.UserProfile.Name, lclient.UserProfile.AccessLevel);
+
+			client.SendLine(String.Format("---------// {0} Users Online //---------", wholist.Count));
+
+			for(int i = 0; i < wholist.Count; i++)
+				client.SendLine(String.Format("  {0} \t|\t{1}", wholist.GetByIndex(i), wholist.GetKey(i)));
 		}
 
 		public void CmdQuit(WorldState world, Client client, Message input)
@@ -81,6 +97,14 @@ namespace SharpMUD
 
 			foreach(Client out_client in world.clientList)
 				if(!out_client.Equals(client)) out_client.SendLine(String.Format("{0} says, \"{1}\"", client.profile.Name, input.msg));
+		}
+
+		public void CmdSendOOC(WorldState world, Client client, Message input)
+		{
+			client.SendLine(String.Format("OOC You: {0}", input.msg));
+
+			foreach(Client out_client in world.clientList)
+				if(!out_client.Equals(client)) out_client.SendLine(String.Format("OOC {0}: {1}", client.UserProfile.Name, input.msg));
 		}
 
 		public void CmdShutdown(WorldState world, Client client, Message input)
