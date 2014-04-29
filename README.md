@@ -9,7 +9,6 @@ TODO:
 Soon
 ----
 
-* Password Hashing
 * MCCP Support
 * Help system
 * Builder Tools

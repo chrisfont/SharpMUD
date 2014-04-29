@@ -24,17 +24,26 @@ namespace SharpMUD
 
 		public Commands()
 		{
+			// Because our command handler is an object, we need to populate the 
+			// command lookup table in our ctor.
 			CmdTable = new Dictionary<String, CmdAccess>()
 			{
+				/* Safe Commands */
 				{"quit",     new CmdAccess{func = new Action<WorldState,Client,Message>(CmdQuit),     reqAccess = Profile.ALevels.Mortal}},
 				{"who",      new CmdAccess{func = new Action<WorldState,Client,Message>(CmdWho),      reqAccess = Profile.ALevels.Mortal}},
 				{"say",      new CmdAccess{func = new Action<WorldState,Client,Message>(CmdSend),     reqAccess = Profile.ALevels.Mortal}},
 				{"ooc",      new CmdAccess{func = new Action<WorldState,Client,Message>(CmdSendOOC),  reqAccess = Profile.ALevels.Mortal}},
 				{"tell",     new CmdAccess{func = new Action<WorldState,Client,Message>(CmdSendPriv), reqAccess = Profile.ALevels.Mortal}},
+				/* Admin Commands */
+				{"kick",     new CmdAccess{func = new Action<WorldState,Client,Message>(CmdKick),     reqAccess = Profile.ALevels.Admin}},
 				{"shutdown", new CmdAccess{func = new Action<WorldState,Client,Message>(CmdShutdown), reqAccess = Profile.ALevels.Admin}}
+				/* Builder Commands */
+				/* Coder Commands */
+				/* Owner Commands */
 			};
 		}
 
+		#region HelperCmds
 		private Profile FindProfile(String username)
 		{
 			Profile outProfile = new Profile();
@@ -56,6 +65,24 @@ namespace SharpMUD
 			return outProfile;
 		}
 
+		private Client FindClient(List<Client> clientList, String username)
+		{
+			Client target = null;
+
+			foreach(Client cl_target in clientList)
+			{
+				if(cl_target.UserProfile.Name.ToLower() == username.ToLower())
+				{
+					target = cl_target;
+					break;
+				}
+			}
+
+			return target;
+		}
+		#endregion HelperCmds
+
+		#region SafeCommands
 		public void CmdHandle(WorldState world, Client client, Message input)
 		{
 			try
@@ -91,7 +118,7 @@ namespace SharpMUD
 			client.SendLine("Closing socket. Goodbye.");
 
 			foreach(Client out_client in world.clientList)
-				if(!out_client.Equals(client)) out_client.SendLine(String.Format("{0} has quit.", client.profile.Name));
+				if(!out_client.Equals(client)) out_client.SendLine(String.Format("{0} has quit.", client.UserProfile.Name));
 
 			client.State = Client.CStates.closing;
 		}
@@ -101,7 +128,7 @@ namespace SharpMUD
 			client.Send(String.Format("You say, \"{0}\"{1}", input.msg, Environment.NewLine));
 
 			foreach(Client out_client in world.clientList)
-				if(!out_client.Equals(client)) out_client.SendLine(String.Format("{0} says, \"{1}\"", client.profile.Name, input.msg));
+				if(!out_client.Equals(client)) out_client.SendLine(String.Format("{0} says, \"{1}\"", client.UserProfile.Name, input.msg));
 		}
 
 		public void CmdSendOOC(WorldState world, Client client, Message input)
@@ -114,13 +141,13 @@ namespace SharpMUD
 
 		public void CmdSendPriv(WorldState world, Client client, Message input)
 		{
-			String[] msg_split = input.msg.Split(' ');
+			String[] msg_split = input.SplitMsg();
 
-			if(msg_split.Length < 1)
+			if(msg_split[0].Equals(String.Empty))
 			{
 				client.SendLine("Tell who what?");
 			}
-			else if(msg_split.Length == 1)
+			else if(msg_split[1].Equals(String.Empty))
 			{
 				client.SendLine(String.Format("Tell {0} what?", msg_split[0]));
 			}
@@ -130,19 +157,12 @@ namespace SharpMUD
 			}
 			else
 			{
-				Client target = null;
+				Client target;
 
 				String username = msg_split[0];
-				String msg      = String.Join(" ", msg_split.Skip(1));
+				String msg      = msg_split[1];
 
-				foreach(Client cl_target in world.clientList)
-				{
-					if(cl_target.UserProfile.Name.ToLower() == username.ToLower())
-					{
-						target = cl_target;
-						break;
-					}
-				}
+				target = FindClient(world.clientList, username);
 
 				if(target != null)
 				{
@@ -155,6 +175,30 @@ namespace SharpMUD
 				}
 			}
 		}
+		#endregion SafeCmds
+
+		#region AdminCmds
+		public void CmdKick(WorldState world, Client client, Message input)
+		{
+			Client kickClient;
+			String username = input.SplitMsg()[0];
+			String reason = input.SplitMsg()[1];
+
+			kickClient = FindClient(world.clientList, username);
+
+			if(kickClient != null)
+			{
+				if(reason.Equals(String.Empty))
+					kickClient.SendLine(String.Format("{0} has kicked you.", client.UserProfile.Name));
+				else
+					kickClient.SendLine(String.Format("{0} has kicked you with message: {1}", client.UserProfile.Name, reason));
+				kickClient.State = Client.CStates.closing;
+			}
+			else
+			{
+				client.Send(String.Format("{0} was not found.", username));
+			}
+		}
 
 		public void CmdShutdown(WorldState world, Client client, Message input)
 		{
@@ -164,7 +208,9 @@ namespace SharpMUD
 				out_client.State = Client.CStates.closing;
 			}
 		}
+		#endregion AdminCmds
 
+		#region LoginCmds
 		public void CmdLogin(WorldState world, Client client, Message input)
 		{
 			client.UserProfile = FindProfile(input.cmd);
@@ -189,7 +235,7 @@ namespace SharpMUD
 		{
 			if(client.State == Client.CStates.login_newpass)
 			{
-				client.UserProfile.Pass = input.cmd;
+				client.UserProfile.SetHPass(input.cmd);
 				client.SendLine("Please verify your new password: ");
 				client.State = Client.CStates.login_conpass;
 			}
@@ -227,5 +273,6 @@ namespace SharpMUD
 				client.UserProfile.Try += 1;
 			}
 		}
+		#endregion LoginCmds
 	}
 }

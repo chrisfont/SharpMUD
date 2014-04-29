@@ -1,12 +1,13 @@
 using System;
 using System.IO;
-using System.Linq;
 using System.Collections.Generic;
 
+using System.Text;
+
+using System.Security.Cryptography;
+
 using Newtonsoft.Json;
-using Newtonsoft.Json.Bson;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
+using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 
 namespace SharpMUD
@@ -14,7 +15,6 @@ namespace SharpMUD
 	public class Profile
 	{
 		private String pfile_base = "../../players/";
-
 		public enum PStates {Login_Name, Login_Pass, Login_Pass_Verify};
 		public enum ALevels {New, Mortal, Builder, Admin, Coder, Owner};
 
@@ -36,6 +36,13 @@ namespace SharpMUD
 			this.tries = 0;
 		}
 
+		private String Hash(MD5 md5Hash, String toHash)
+		{
+			byte[] data = md5Hash.ComputeHash(Encoding.UTF8.GetBytes(toHash));
+
+			return BitConverter.ToString(data);
+		}
+
 		public sbyte Try
 		{
 			get { return this.tries;  }
@@ -44,12 +51,20 @@ namespace SharpMUD
 
 		public bool ChkPass(String pass)
 		{
-			return this.Pass.Equals(pass);
+			using(MD5 md5Hash = MD5.Create())
+			{
+				String hash = Hash(md5Hash, pass);
+
+				return this.Pass.Equals(hash);
+			}
 		}
 
-		public void Load()
+		public void SetHPass(String pass)
 		{
-
+			using(MD5 md5Hash = MD5.Create())
+			{
+				this.Pass = Hash(md5Hash, pass);
+			}
 		}
 
 		public void Save()
