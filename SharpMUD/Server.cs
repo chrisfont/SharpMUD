@@ -3,6 +3,8 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 
+using System.Linq;
+
 namespace SharpMUD
 {
 	class Server
@@ -17,13 +19,25 @@ namespace SharpMUD
 			this.verbose = verbose;
 
 			//IPAddress ipaddr = IPAddress.Parse("172.29.1.68");
-			IPAddress ipaddr = Dns.GetHostAddresses("localhost")[0];
+			IPAddress   ipaddr   = null;
+			IPAddress[] localIPs = Dns.GetHostAddresses(Dns.GetHostName());
+
+			foreach(IPAddress ip in localIPs)
+			{
+				if(ip.AddressFamily == AddressFamily.InterNetwork)
+				{
+					ipaddr = ip;
+				}
+			}
+
+			if(ipaddr == null) ipaddr = localIPs[0];
+
 			serv = new TcpListener(ipaddr, port_num);
 
 			serv.Start(back_log);
 
 			if(debugging || this.verbose)
-				Console.WriteLine("Starting server on port {0}...", port_num);
+				Console.WriteLine("Starting server on host: {0}\tport: {1}...", ipaddr.ToString(), port_num);
 		}
 
 		public bool clientReady()

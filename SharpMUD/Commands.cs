@@ -29,6 +29,7 @@ namespace SharpMUD
 			CmdTable = new Dictionary<String, CmdAccess>()
 			{
 				/* Safe Commands */
+				{"help",     new CmdAccess{func = new Action<WorldState,Client,Message>(CmdHelp),     reqAccess = Profile.ALevels.Mortal}},
 				{"quit",     new CmdAccess{func = new Action<WorldState,Client,Message>(CmdQuit),     reqAccess = Profile.ALevels.Mortal}},
 				{"who",      new CmdAccess{func = new Action<WorldState,Client,Message>(CmdWho),      reqAccess = Profile.ALevels.Mortal}},
 				{"say",      new CmdAccess{func = new Action<WorldState,Client,Message>(CmdSend),     reqAccess = Profile.ALevels.Mortal}},
@@ -80,7 +81,7 @@ namespace SharpMUD
 
 			return target;
 		}
-		#endregion HelperCmds
+		#endregion
 
 		#region SafeCommands
 		public void CmdHandle(WorldState world, Client client, Message input)
@@ -92,25 +93,34 @@ namespace SharpMUD
 					Console.WriteLine("Found command: {0}", input.cmd);
 					CmdTable[input.cmd].func(world, client, input);
 				}
+
+				client.SendPrompt();
 			}
 			catch(KeyNotFoundException)
 			{
+				client.SendPrompt();
 				return;
 			}
 		}
 
+		public void CmdHelp(WorldState world, Client client, Message input)
+		{
+			world.HelpFiles.GetHelp(client, input.msg);
+		}
+
 		public void CmdWho(WorldState world, Client client, Message input)
 		{
-			SortedList wholist = new SortedList();
+			SortedList<String, Client> wholist = new SortedList<String, Client>();
 
+			// Order by name
 			foreach(Client lclient in world.clientList)
-				if(lclient.State == Client.CStates.playing)
-					wholist.Add(lclient.UserProfile.Name, lclient.UserProfile.AccessLevel);
+				wholist.Add(lclient.UserProfile.Name, lclient);
 
-			client.SendLine(String.Format("---------// {0} Users Online //---------", wholist.Count));
+			client.SendLine(String.Format("-------------// {0} Users Online //------------", wholist.Count));
+			client.SendLine(String.Format("\tType\t|\tName\t|\tState", wholist.Count));
 
-			for(int i = 0; i < wholist.Count; i++)
-				client.SendLine(String.Format("  {0} \t|\t{1}", wholist.GetByIndex(i), wholist.GetKey(i)));
+			foreach(KeyValuePair<String, Client> entry in wholist)
+				client.SendLine(String.Format("  {0} \t|\t{1}\t|\t{2}", entry.Value.UserProfile.AccessLevel, entry.Key, entry.Value.State));
 		}
 
 		public void CmdQuit(WorldState world, Client client, Message input)
@@ -175,7 +185,7 @@ namespace SharpMUD
 				}
 			}
 		}
-		#endregion SafeCmds
+		#endregion
 
 		#region AdminCmds
 		public void CmdKick(WorldState world, Client client, Message input)
@@ -208,7 +218,7 @@ namespace SharpMUD
 				out_client.State = Client.CStates.closing;
 			}
 		}
-		#endregion AdminCmds
+		#endregion
 
 		#region LoginCmds
 		public void CmdLogin(WorldState world, Client client, Message input)
@@ -219,12 +229,18 @@ namespace SharpMUD
 			{
 				client.SendLine("New account detected.");
 				client.Send("Enter new password: ");
+
+				client.StopEcho();
+
 				client.State = Client.CStates.login_newpass;
 			}
 			else
 			{
 				client.SendLine(String.Format("Welcome back, {0}!", client.UserProfile.Name));
 				client.Send("Enter password: ");
+
+				client.StopEcho();
+
 				client.State = Client.CStates.login_pass;
 			}
 
@@ -237,6 +253,9 @@ namespace SharpMUD
 			{
 				client.UserProfile.SetHPass(input.cmd);
 				client.SendLine("Please verify your new password: ");
+
+				client.StopEcho();
+
 				client.State = Client.CStates.login_conpass;
 			}
 			else if(client.UserProfile.ChkPass(input.cmd))
@@ -244,6 +263,8 @@ namespace SharpMUD
 				client.SendLine("Welcome to the server!");
 				client.UserProfile.AccessLevel = Profile.ALevels.Mortal;
 				client.UserProfile.Save();
+
+				client.StartEcho();
 
 				client.State = Client.CStates.playing;
 			}
@@ -260,6 +281,7 @@ namespace SharpMUD
 			if(client.UserProfile.ChkPass(input.cmd))
 			{
 				client.SendLine(String.Format("{0} has finished signing in.", client.UserProfile.Name));
+				client.SendPrompt();
 				client.State = Client.CStates.playing;
 			}
 			else if(client.UserProfile.Try.Equals(3))
@@ -273,6 +295,6 @@ namespace SharpMUD
 				client.UserProfile.Try += 1;
 			}
 		}
-		#endregion LoginCmds
+		#endregion
 	}
 }

@@ -22,7 +22,11 @@ namespace SharpMUD
 		public String  Pass        { get; set; }
 		public PStates State       { get; set; }
 		public ALevels AccessLevel { get; set; }
+
+		public long    Hp          { get; set; }
+		public long    Mp          { get; set; }
 		public long    Xp          { get; set; }
+		public long    Gp          { get; set; }
 
 		private sbyte   tries;
 				
@@ -33,7 +37,12 @@ namespace SharpMUD
 			this.State       = state;
 			this.AccessLevel = access;
 
-			this.tries = 0;
+			this.Hp          = 0;
+			this.Mp          = 0;
+			this.Xp          = 0;
+			this.Gp          = 0;
+
+			this.tries       = 0;
 		}
 
 		private String Hash(MD5 md5Hash, String toHash)
@@ -75,8 +84,13 @@ namespace SharpMUD
 			String cwd = System.Environment.CurrentDirectory;
 			String pfile = String.Format("{0}/{1}{2}/{3}.json", cwd, pfile_base, this.Name.ToCharArray()[0], this.Name);
 
-			String json = JsonConvert.SerializeObject(this);
+			String json = JsonConvert.SerializeObject(this, Formatting.Indented);
 			File.WriteAllText(pfile, json);
+		}
+
+		public String GetHUD()
+		{
+			return String.Format("Name: {0} HP: {1} MP: {2} XP: {3} GP: {4}", this.Name, this.Hp, this.Mp, this.Xp, this.Gp);
 		}
 	}
 }

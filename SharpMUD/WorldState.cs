@@ -19,6 +19,8 @@ namespace SharpMUD
 		public List<Client>   clientList;
 		public List<Client>   removeList;
 
+		public Help           HelpFiles { get; set; }
+
 		public WorldState(bool debug_en = true, bool verbose_en = true, int port = 5000)
 		{
 			this.is_evil = true;
@@ -32,6 +34,7 @@ namespace SharpMUD
 
 			this.clientList = new List<Client>();
 			this.removeList = new List<Client>();
+			this.HelpFiles = new Help();
 		}
 
 		public bool Running

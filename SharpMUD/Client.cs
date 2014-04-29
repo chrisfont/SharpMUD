@@ -77,6 +77,42 @@ namespace SharpMUD
 			}
 		}
 
+		public void StopEcho()
+		{/*
+			byte[] stopEcho = { 255, 253, 1 };
+			this.SendByte(stopEcho);
+		  */
+		}
+
+		public void StartEcho()
+		{/*
+			byte[] startEcho = { 255, 254, 1 };
+			this.SendByte(startEcho);
+		  */
+		}
+
+		public void SendByte(byte[] outBytes)
+		{
+			if(!this.OutAvail()) return;
+
+			try
+			{
+				stream.Write(outBytes, 0, outBytes.Length);
+			}
+			catch(IOException)
+			{
+				this.state = CStates.closing;
+				return;
+			}
+			catch(Exception e)
+			{
+				Console.WriteLine("ERROR: {0}...Flushing Client Stream.", e.ToString());
+				stream.Flush();
+
+				return;
+			}
+		}
+
 		public bool Send(String outbound)
 		{
 			// Check to make sure our outbuffer isn't full
@@ -104,6 +140,13 @@ namespace SharpMUD
 		public void SendLine(String outbound)
 		{
 			this.Send(String.Format("{0}{1}", outbound, Environment.NewLine));
+		}
+
+		public void SendPrompt()
+		{
+			this.SendLine("");
+			this.SendLine(this.UserProfile.GetHUD());
+			this.Send("> ");
 		}
 
 		public CStates State
