@@ -22,6 +22,17 @@ namespace SharpMUD
 			this.cmd = (in_split.Length > 0) ? in_split[0].ToLower()              : String.Empty;
 			this.msg = (in_split.Length > 1) ? String.Join(" ", in_split.Skip(1)) : String.Empty;
 		}
+
+		public String[] SplitMsg()
+		{
+			String[] outStrings = new string[2];
+			String[] temp = this.msg.Split(' ');
+
+			outStrings[0] = temp[0];
+			outStrings[1] = (temp.Length > 1) ? String.Join(" ", temp.Skip(1)) : String.Empty;
+
+			return outStrings;
+		}
 	}
 
 	class MainClass

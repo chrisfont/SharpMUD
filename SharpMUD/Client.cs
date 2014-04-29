@@ -14,7 +14,7 @@ namespace SharpMUD
 		private TcpClient     handle;
 		private NetworkStream stream;
 		private CStates       state;
-		public  Profile       profile;
+		public  Profile       UserProfile { get; set; }
 
 		public Client(TcpClient handle)
 		{
@@ -24,13 +24,7 @@ namespace SharpMUD
 			// Save some time because we are going to be mostly using streams for interaction
 			this.stream = handle.GetStream();
 
-			this.profile = new Profile();
-		}
-
-		public Profile UserProfile
-		{
-			get { return this.profile; }
-			set { this.profile = value; }
+			this.UserProfile = new Profile();
 		}
 
 		public bool InAvail()
@@ -53,6 +47,8 @@ namespace SharpMUD
 
 		public String Recv()
 		{
+			// We only want to try receiving if data is actually there
+			// due to the fact that receiving is a blocking action.
 			if(this.InAvail())
 			{
 				try
@@ -83,6 +79,7 @@ namespace SharpMUD
 
 		public bool Send(String outbound)
 		{
+			// Check to make sure our outbuffer isn't full
 			if(!this.OutAvail()) return false;
 
 			try
