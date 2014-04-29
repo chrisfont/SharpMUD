@@ -19,8 +19,8 @@ namespace SharpMUD
 		{
 			String[] in_split = input.Split(' ');
 
-			this.cmd = (input.Length > 0) ? in_split[0].ToLower()              : String.Empty;
-			this.msg = (input.Length > 1) ? String.Join(" ", in_split.Skip(1)) : String.Empty;
+			this.cmd = (in_split.Length > 0) ? in_split[0].ToLower()              : String.Empty;
+			this.msg = (in_split.Length > 1) ? String.Join(" ", in_split.Skip(1)) : String.Empty;
 		}
 	}
 

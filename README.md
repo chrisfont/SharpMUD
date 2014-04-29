@@ -1,5 +1,4 @@
 # SharpMUD #
--------------------------------------------------------------------------------
 
 A simple MUD engine written in C#. It uses Newtonsofts' excellent JSON.NET
 library for player profile storage.

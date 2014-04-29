@@ -1,10 +1,14 @@
 using System;
 using System.IO;
+
+using System.Collections;
 using System.Collections.Generic;
+
+using System.Linq;
+using System.Text;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using System.Collections;
 
 namespace SharpMUD
 {
@@ -26,6 +30,7 @@ namespace SharpMUD
 				{"who",      new CmdAccess{func = new Action<WorldState,Client,Message>(CmdWho),      reqAccess = Profile.ALevels.Mortal}},
 				{"say",      new CmdAccess{func = new Action<WorldState,Client,Message>(CmdSend),     reqAccess = Profile.ALevels.Mortal}},
 				{"ooc",      new CmdAccess{func = new Action<WorldState,Client,Message>(CmdSendOOC),  reqAccess = Profile.ALevels.Mortal}},
+				{"tell",     new CmdAccess{func = new Action<WorldState,Client,Message>(CmdSendPriv), reqAccess = Profile.ALevels.Mortal}},
 				{"shutdown", new CmdAccess{func = new Action<WorldState,Client,Message>(CmdShutdown), reqAccess = Profile.ALevels.Admin}}
 			};
 		}
@@ -105,6 +110,50 @@ namespace SharpMUD
 
 			foreach(Client out_client in world.clientList)
 				if(!out_client.Equals(client)) out_client.SendLine(String.Format("OOC {0}: {1}", client.UserProfile.Name, input.msg));
+		}
+
+		public void CmdSendPriv(WorldState world, Client client, Message input)
+		{
+			String[] msg_split = input.msg.Split(' ');
+
+			if(msg_split.Length < 1)
+			{
+				client.SendLine("Tell who what?");
+			}
+			else if(msg_split.Length == 1)
+			{
+				client.SendLine(String.Format("Tell {0} what?", msg_split[0]));
+			}
+			else if(msg_split[0].ToLower() == client.UserProfile.Name.ToLower())
+			{
+				client.SendLine("Stop talking to yourself.");
+			}
+			else
+			{
+				Client target = null;
+
+				String username = msg_split[0];
+				String msg      = String.Join(" ", msg_split.Skip(1));
+
+				foreach(Client cl_target in world.clientList)
+				{
+					if(cl_target.UserProfile.Name.ToLower() == username.ToLower())
+					{
+						target = cl_target;
+						break;
+					}
+				}
+
+				if(target != null)
+				{
+					client.SendLine(String.Format("You tell {0}, \"{1}\"", username, msg));
+					target.SendLine(String.Format("{0} tells you, \"{1}\"", client.UserProfile.Name, msg));
+				}
+				else
+				{
+					client.SendLine(String.Format("{0} is not connected.", username));
+				}
+			}
 		}
 
 		public void CmdShutdown(WorldState world, Client client, Message input)
